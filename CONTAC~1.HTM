@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>تواصل معنا | PickEasy.eg</title>
+<meta name="description" content="تواصل مع فريق بيك إيزي PickEasy.eg" />
+<style>
+  :root { --orange:#FF9900; --orange-dark:#E68900; --dark:#131A22; --gray:#5A5A5A; --light:#F4F4F4; --border:#E5E5E5; --white:#FFFFFF; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Tahoma,Arial,sans-serif; background:var(--white); color:var(--dark); line-height:1.7; }
+  a { color:inherit; text-decoration:none; }
+  header { background:var(--white); border-bottom:2px solid var(--orange); }
+  .nav-wrap { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; padding:16px 24px; flex-wrap:wrap; gap:12px; }
+  .logo { font-size:24px; font-weight:800; }
+  .logo span { color:var(--orange); }
+  nav ul { display:flex; list-style:none; gap:20px; }
+  nav a { font-weight:600; }
+  nav a:hover { color:var(--orange); }
+  .container { max-width:720px; margin:0 auto; padding:48px 24px; }
+  h1 { font-size:36px; margin-bottom:8px; }
+  .subtitle { color:var(--gray); margin-bottom:32px; }
+  form { background:var(--light); padding:32px; border-radius:12px; border:1px solid var(--border); }
+  .form-row { margin-bottom:20px; }
+  label { display:block; font-weight:700; margin-bottom:8px; color:var(--dark); }
+  input, textarea {
+    width:100%;
+    padding:12px 14px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:15px;
+    font-family:inherit;
+    background:var(--white);
+    transition:border-color 0.2s;
+  }
+  input:focus, textarea:focus { outline:none; border-color:var(--orange); }
+  textarea { min-height:140px; resize:vertical; }
+  .submit-btn {
+    background:var(--orange); color:var(--white); border:none;
+    padding:14px 36px; border-radius:50px;
+    font-size:16px; font-weight:700; cursor:pointer;
+    transition:background 0.2s;
+  }
+  .submit-btn:hover { background:var(--orange-dark); }
+  .info-box {
+    background:#FFF7E6; border:1px solid var(--orange);
+    padding:16px; border-radius:8px; margin-top:24px;
+    font-size:14px;
+  }
+  .info-box strong { color:var(--orange-dark); }
+  .english-note { direction:ltr; text-align:left; margin-top:16px; color:var(--gray); font-size:14px; }
+  footer { background:var(--dark); color:#BBB; padding:32px 24px; text-align:center; font-size:14px; }
+  footer a { color:var(--orange); }
+  .success { display:none; background:#E8F5E9; color:#2E7D32; padding:16px; border-radius:8px; margin-top:16px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-wrap">
+    <div class="logo">بيك إيزي | <span>PickEasy.eg</span></div>
+    <nav>
+      <ul>
+        <li><a href="index.html">الرئيسية</a></li>
+        <li><a href="index.html#about">عن الموقع</a></li>
+        <li><a href="privacy.html">الخصوصية</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <h1>تواصل معنا</h1>
+  <p class="subtitle">نسعد بسماع رأيك أو اقتراحك أو سؤالك. سنرد خلال ٢٤–٤٨ ساعة.</p>
+
+  <form id="contact-form" onsubmit="handleSubmit(event)">
+    <div class="form-row">
+      <label for="name">الاسم</label>
+      <input type="text" id="name" name="name" required placeholder="اسمك الكامل" />
+    </div>
+    <div class="form-row">
+      <label for="email">البريد الإلكتروني</label>
+      <input type="email" id="email" name="email" required placeholder="example@email.com" />
+    </div>
+    <div class="form-row">
+      <label for="subject">الموضوع</label>
+      <input type="text" id="subject" name="subject" required placeholder="موضوع رسالتك" />
+    </div>
+    <div class="form-row">
+      <label for="message">الرسالة</label>
+      <textarea id="message" name="message" required placeholder="اكتب رسالتك هنا..."></textarea>
+    </div>
+    <button type="submit" class="submit-btn">إرسال الرسالة</button>
+    <div class="success" id="success">✅ تم استلام رسالتك. سنعود إليك قريباً.</div>
+  </form>
+
+  <div class="info-box">
+    <strong>ملاحظة:</strong> لن نشارك بياناتك مع أي طرف ثالث ولن نرسل لك بريداً إعلانياً بدون إذنك.
+    <div class="english-note">We respect your privacy. Your information will never be shared with third parties or used for unsolicited marketing.</div>
+  </div>
+</main>
+
+<footer>
+  © 2026 PickEasy.eg | <a href="index.html">الرئيسية</a> · <a href="privacy.html">الخصوصية</a>
+</footer>
+
+<script>
+function handleSubmit(e) {
+  e.preventDefault();
+  // Static site demo — in production this would POST to a serverless endpoint or Formspree
+  document.getElementById('contact-form').reset();
+  document.getElementById('success').style.display = 'block';
+  setTimeout(() => { document.getElementById('success').style.display = 'none'; }, 5000);
+}
+</script>
+
+</body>
+</html>
