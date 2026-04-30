@@ -1,0 +1,625 @@
+{
+  "name": "PickEasy.eg — Daily Affiliate Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-01-schedule",
+      "name": "Daily 7am Cairo",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.amazon.eg/-/en/gp/movers-and-shakers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.9,ar;q=0.8"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "node-01b-trends",
+      "name": "Fetch Amazon.eg Movers & Shakers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        350,
+        300
+      ],
+      "continueOnFail": true,
+      "notes": "Pulls the live trending page HTML so Claude has real-time signal. Falls back to Claude's reasoning if blocked."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compress the Movers & Shakers HTML to product titles + ranks for the next step.\n// If fetch failed, return empty trends array — Claude will fall back to internal knowledge.\nconst raw = $input.first().json.body || $input.first().json.data || '';\nif (!raw || raw.length < 1000) {\n  return [{ json: { trends: [], status: 'empty_or_blocked' } }];\n}\nconst asinMatches = [...raw.matchAll(/\\/dp\\/([A-Z0-9]{10})/g)];\nconst titleMatches = [...raw.matchAll(/aria-label=\"([^\"]{20,200})\"/g)];\nconst trends = [];\nconst seen = new Set();\nfor (let i = 0; i < Math.min(30, asinMatches.length); i++) {\n  const asin = asinMatches[i][1];\n  if (seen.has(asin)) continue;\n  seen.add(asin);\n  trends.push({ asin, rank: i + 1, title_hint: titleMatches[i] ? titleMatches[i][1] : '' });\n}\nreturn [{ json: { trends, status: 'fetched', count: trends.length } }];"
+      },
+      "id": "node-01c-parse-trends",
+      "name": "Parse Trending ASINs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "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"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 2500,\n  \"system\": \"You are a product research and trend-detection assistant for an Amazon Egypt affiliate channel that posts to TikTok, Instagram Reels, and YouTube Shorts. You are NOT locked to one niche \\u2014 your job each day is to find the products MOST LIKELY TO GO VIRAL today across all suitable categories.\\n\\nEligible categories (all of these are in scope every day):\\n- Home & Kitchen (storage, organization, kitchen gadgets, household appliances, cleaning tools)\\n- Electronics (smart home devices, audio, accessories, chargers, mobile accessories)\\n- Beauty & Personal Care (skincare, hair tools, wellness gadgets \\u2014 avoid pharmaceuticals)\\n- Sports & Outdoors (fitness gadgets, gym accessories, outdoor tools)\\n- Toys & Games (creative toys, family games \\u2014 avoid age-restricted)\\n- Tools & Home Improvement (visually demonstrable tools only)\\n\\n\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\nSTEP 1 \\u2014 TREND DETECTION (do this first, internally)\\n\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\n\\nIdentify TODAY's most viral product themes by reasoning across:\\n1. Amazon.eg \\\"Movers & Shakers\\\" \\u2014 products with the biggest sales rank jump in the last 24 hours\\n2. Amazon.eg \\\"Bestsellers\\\" \\u2014 top sellers per category\\n3. Seasonal context \\u2014 month, weather, upcoming Egyptian holidays/events\\n4. Short-form video virality patterns \\u2014 what kinds of products are currently going viral on Arabic TikTok/Reels (e.g., \\\"satisfying\\\" organization items, \\\"wow-factor\\\" kitchen gadgets, smart-home demos, beauty transformations)\\n\\nPick the TOP 3 trending themes for today, each from a DIFFERENT category if possible. This keeps the feed varied and the algorithm rewarding.\\n\\n\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\nSTEP 2 \\u2014 PRODUCT VALIDATION\\n\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\n\\nFor each trending theme, find ONE product that passes ALL of these:\\n1. Currently visible on amazon.eg with \\\"Add to Cart\\\" or \\\"Buy Now\\\" button\\n2. Not \\\"Currently unavailable\\\" or \\\"Out of stock\\\"\\n3. Sold by Amazon.eg directly OR by a seller with 90%+ positive rating\\n4. Price between 200\\u20133000 EGP\\n5. Star rating 4.2 or above\\n6. Review count 100 or above\\n7. Has at least 2 clear product images\\n8. Not a consumable (no food, medicine, perishables, supplements)\\n9. NOT been promoted by us in the last 14 days (caller will provide exclusion list)\\n10. Visually demonstrable in 60 seconds \\u2014 would look compelling in a vertical video\\n\\n\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\nSTEP 3 \\u2014 RANK & RETURN\\n\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\u2550\\n\\nScore each candidate by:\\nviral_score = trend_velocity \\u00d7 (commission_rate \\u00d7 price) \\u00d7 log(review_count) \\u00d7 visual_appeal\\n\\nReturn ONLY valid JSON array of the top 3 \\u2014 no preamble, no markdown, raw JSON only.\\nIf fewer than 3 products pass validation today, return only those that pass \\u2014 never include an unavailable product.\\n\\nOutput schema:\\n[\\n  {\\n    \\\"product_name\\\": \\\"\\\",\\n    \\\"product_name_arabic\\\": \\\"\\\",\\n    \\\"asin\\\": \\\"\\\",\\n    \\\"category\\\": \\\"\\\",\\n    \\\"trend_reason\\\": \\\"Why this is trending today \\u2014 1 sentence\\\",\\n    \\\"price_egp\\\": 0,\\n    \\\"commission_rate\\\": 0.04,\\n    \\\"estimated_commission_egp\\\": 0,\\n    \\\"star_rating\\\": 0,\\n    \\\"review_count\\\": 0,\\n    \\\"product_url\\\": \\\"https://www.amazon.eg/dp/[ASIN]\\\",\\n    \\\"affiliate_link\\\": \\\"https://www.amazon.eg/dp/[ASIN]?tag=[ASSOCIATE_ID]\\\",\\n    \\\"availability_status\\\": \\\"in_stock\\\",\\n    \\\"seller_type\\\": \\\"amazon_or_verified\\\",\\n    \\\"key_features\\\": [\\\"\\\", \\\"\\\", \\\"\\\"],\\n    \\\"problem_it_solves\\\": \\\"\\\",\\n    \\\"target_buyer_arabic\\\": \\\"\\\",\\n    \\\"image_urls\\\": [\\\"\\\", \\\"\\\"],\\n    \\\"viral_score\\\": 0\\n  }\\n]\\n\",\n  \"messages\": [{\"role\":\"user\",\"content\": \"=Today is {{ $now.toFormat('yyyy-MM-dd') }}. Multi-category trend mode is ACTIVE. Eligible categories: home-kitchen,electronics,beauty,sports-outdoors,toys-games,tools. Associate ID: pickeasy06-21.\\\\n\\\\nLive movers-and-shakers signal from amazon.eg (status: {{$json.status}}, count: {{$json.count}}):\\\\n{{ JSON.stringify($json.trends) }}\\\\n\\\\nUsing this signal plus your reasoning about Egyptian short-form video trends today, return the top 3 validated, in-stock, viral-worthy products from DIFFERENT categories. Do not repeat ASINs posted in the last 14 days.\"}]\n}",
+        "options": {}
+      },
+      "id": "node-02-research",
+      "name": "Claude — Trend & Product Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        570,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Claude's JSON output and return as array of products\nconst raw = $input.first().json.content[0].text;\nconst products = JSON.parse(raw);\nreturn products.map(p => ({ json: p }));"
+      },
+      "id": "node-02b-parse",
+      "name": "Parse Products JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $items().length }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-03-if-products",
+      "name": "IF: Products Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "reset": true
+        }
+      },
+      "id": "node-04-batch",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "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"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 3000,\n  \"system\": \"You are a viral Arabic short video scriptwriter for TikTok, Instagram Reels, and YouTube Shorts. You write in Egyptian Arabic dialect (\\u0639\\u0627\\u0645\\u064a\\u0629 \\u0645\\u0635\\u0631\\u064a\\u0629). Your scripts feel like a genuine friend recommendation \\u2014 never like an advertisement. Your hook must stop scrolling within 2 seconds.\\n\\nInput format you receive:\\n{\\n  \\\"product_name\\\": \\\"\\\",\\n  \\\"product_name_arabic\\\": \\\"\\\",\\n  \\\"price_egp\\\": 0,\\n  \\\"star_rating\\\": 0,\\n  \\\"review_count\\\": 0,\\n  \\\"key_features\\\": [],\\n  \\\"problem_it_solves\\\": \\\"\\\",\\n  \\\"target_buyer_arabic\\\": \\\"\\\",\\n  \\\"affiliate_link\\\": \\\"\\\"\\n}\\n\\nReturn ONLY valid JSON. No preamble. Raw JSON only:\\n{\\n  \\\"hook_arabic\\\": \\\"3-second opening line in Egyptian Arabic \\u2014 bold question or surprising statement that stops scrolling\\\",\\n  \\\"script_arabic\\\": \\\"Full 58-second Egyptian Arabic voiceover. Structure: Hook 3s \\u2192 Problem the product solves 8s \\u2192 Product intro 8s \\u2192 Feature 1 with benefit 10s \\u2192 Feature 2 with benefit 10s \\u2192 Feature 3 with benefit 8s \\u2192 Social proof: mention star rating and review count naturally 6s \\u2192 Price reveal 5s \\u2192 CTA: \\u0627\\u0644\\u0631\\u0627\\u0628\\u0637 \\u0641\\u064a \\u0627\\u0644\\u0628\\u0627\\u064a\\u0648 \\ud83d\\udc47\\\",\\n  \\\"script_english\\\": \\\"Same structure in natural English for YouTube Shorts \\u2014 not a direct translation\\\",\\n  \\\"text_overlays\\\": [\\n    {\\\"time_seconds\\\": \\\"0-3\\\", \\\"text\\\": \\\"\\\", \\\"style\\\": \\\"bold-center\\\"},\\n    {\\\"time_seconds\\\": \\\"3-15\\\", \\\"text\\\": \\\"\\\", \\\"style\\\": \\\"bottom-bar\\\"},\\n    {\\\"time_seconds\\\": \\\"15-30\\\", \\\"text\\\": \\\"\\\", \\\"style\\\": \\\"top-left\\\"},\\n    {\\\"time_seconds\\\": \\\"30-45\\\", \\\"text\\\": \\\"\\\", \\\"style\\\": \\\"bottom-bar\\\"},\\n    {\\\"time_seconds\\\": \\\"50-60\\\", \\\"text\\\": \\\"\\u0627\\u0644\\u0631\\u0627\\u0628\\u0637 \\u0641\\u064a \\u0627\\u0644\\u0628\\u0627\\u064a\\u0648 \\ud83d\\udc47\\\", \\\"style\\\": \\\"center-bold\\\"}\\n  ],\\n  \\\"caption_arabic\\\": \\\"2-line Arabic caption + line break + 10 Arabic hashtags relevant to product and niche\\\",\\n  \\\"caption_english\\\": \\\"2-line English caption + line break + 10 English hashtags\\\",\\n  \\\"youtube_title\\\": \\\"Product name + benefit + Arabic keyword \\u2014 under 70 chars\\\",\\n  \\\"youtube_description\\\": \\\"English description 3 sentences + affiliate link + Arabic hashtags\\\",\\n  \\\"thumbnail_text_arabic\\\": \\\"Bold Arabic text for thumbnail \\u2014 max 4 words \\u2014 curiosity-driven\\\",\\n  \\\"elevenlabs_text\\\": \\\"Script Arabic with natural pauses marked as [pause] for pacing\\\"\\n}\\n\",\n  \"messages\": [{\"role\":\"user\",\"content\": {{ JSON.stringify($json) }} }]\n}",
+        "options": {}
+      },
+      "id": "node-05-script",
+      "name": "Claude — Generate Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content[0].text;\nconst script = JSON.parse(raw);\nconst product = $('Split In Batches').item.json;\nreturn [{ json: { product, script } }];"
+      },
+      "id": "node-05b-parse-script",
+      "name": "Parse Script JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/ErXwobaYiN019PkySvjV/stream",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "sk_91be69b1f48fa65e1206a6deccf638ccb8ca4cd2527155eb"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"text\": {{ JSON.stringify($json.script.elevenlabs_text) }},\n  \"model_id\": \"eleven_multilingual_v2\",\n  \"voice_settings\": {\n    \"stability\": 0.5,\n    \"similarity_boost\": 0.8,\n    \"style\": 0.3\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "node-06-voice",
+      "name": "ElevenLabs — Arabic VO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 6bc5eb93ae794dcc84dde4722993ccb804e47832a4dab4a88d83072b1818991f1192f61c163d14d9fa73e1cc12ed7b4e"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"source\": {\n    \"output_format\": \"mp4\",\n    \"width\": 1080,\n    \"height\": 1920,\n    \"duration\": 60,\n    \"frame_rate\": 30,\n    \"fill_color\": \"#000000\",\n    \"elements\": [\n      { \"type\": \"image\", \"track\": 1, \"time\": 0, \"duration\": 30, \"fit\": \"cover\", \"source\": {{ JSON.stringify($('Parse Script JSON').item.json.product.image_urls[0]) }}, \"animations\": [{\"type\":\"scale\",\"easing\":\"linear\",\"start_scale\":1.0,\"end_scale\":1.08,\"duration\":30}] },\n      { \"type\": \"image\", \"track\": 1, \"time\": 30, \"duration\": 20, \"fit\": \"cover\", \"source\": {{ JSON.stringify($('Parse Script JSON').item.json.product.image_urls[1]) }} },\n      { \"type\": \"shape\", \"track\": 2, \"time\": 50, \"duration\": 10, \"width\": \"100%\", \"height\": \"100%\", \"fill_color\": \"#FF9900\" },\n      { \"type\": \"text\", \"track\": 3, \"time\": 0, \"duration\": 3, \"y\": \"50%\", \"x\": \"50%\", \"x_anchor\": \"50%\", \"y_anchor\": \"50%\", \"width\": \"90%\", \"text\": {{ JSON.stringify($('Parse Script JSON').item.json.script.text_overlays[0].text) }}, \"font_family\": \"Cairo\", \"font_weight\": \"700\", \"font_size\": \"68 vmin\", \"fill_color\": \"#FFFFFF\", \"text_align\": \"center\" },\n      { \"type\": \"text\", \"track\": 3, \"time\": 3, \"duration\": 12, \"y\": \"85%\", \"x\": \"50%\", \"x_anchor\": \"50%\", \"y_anchor\": \"100%\", \"width\": \"90%\", \"text\": {{ JSON.stringify($('Parse Script JSON').item.json.script.text_overlays[1].text) }}, \"font_family\": \"Cairo\", \"font_weight\": \"600\", \"font_size\": \"44 vmin\", \"fill_color\": \"#FFFFFF\", \"background_color\": \"rgba(0,0,0,0.6)\", \"padding\": \"16 vmin\", \"text_align\": \"center\" },\n      { \"type\": \"text\", \"track\": 3, \"time\": 15, \"duration\": 10, \"y\": \"15%\", \"x\": \"50%\", \"x_anchor\": \"50%\", \"y_anchor\": \"0%\", \"width\": \"90%\", \"text\": {{ JSON.stringify($('Parse Script JSON').item.json.script.text_overlays[2].text) }}, \"font_family\": \"Cairo\", \"font_weight\": \"600\", \"font_size\": \"44 vmin\", \"fill_color\": \"#FFFFFF\", \"background_color\": \"rgba(0,0,0,0.6)\", \"padding\": \"16 vmin\", \"text_align\": \"center\" },\n      { \"type\": \"text\", \"track\": 3, \"time\": 25, \"duration\": 12, \"y\": \"85%\", \"x\": \"50%\", \"x_anchor\": \"50%\", \"y_anchor\": \"100%\", \"width\": \"90%\", \"text\": {{ JSON.stringify($('Parse Script JSON').item.json.script.text_overlays[3].text) }}, \"font_family\": \"Cairo\", \"font_weight\": \"600\", \"font_size\": \"44 vmin\", \"fill_color\": \"#FFFFFF\", \"background_color\": \"rgba(0,0,0,0.6)\", \"padding\": \"16 vmin\", \"text_align\": \"center\" },\n      { \"type\": \"text\", \"track\": 4, \"time\": 50, \"duration\": 10, \"y\": \"40%\", \"x\": \"50%\", \"x_anchor\": \"50%\", \"y_anchor\": \"50%\", \"text\": \"={{$('Parse Script JSON').item.json.product.price_egp}} \\u062c\\u0646\\u064a\\u0647\", \"font_family\": \"Cairo\", \"font_weight\": \"700\", \"font_size\": \"52 vmin\", \"fill_color\": \"#000000\", \"text_align\": \"center\" },\n      { \"type\": \"text\", \"track\": 4, \"time\": 50, \"duration\": 10, \"y\": \"60%\", \"x\": \"50%\", \"x_anchor\": \"50%\", \"y_anchor\": \"50%\", \"text\": \"\\u0627\\u0644\\u0631\\u0627\\u0628\\u0637 \\u0641\\u064a \\u0627\\u0644\\u0628\\u0627\\u064a\\u0648 \\ud83d\\udc47\", \"font_family\": \"Cairo\", \"font_weight\": \"700\", \"font_size\": \"48 vmin\", \"fill_color\": \"#000000\", \"text_align\": \"center\" },\n      { \"type\": \"text\", \"track\": 5, \"time\": 0, \"duration\": 60, \"y\": \"95%\", \"x\": \"95%\", \"x_anchor\": \"100%\", \"y_anchor\": \"100%\", \"text\": \"PickEasy.eg\", \"font_family\": \"Roboto\", \"font_size\": \"24 vmin\", \"fill_color\": \"rgba(255,255,255,0.6)\" },\n      { \"type\": \"audio\", \"track\": 6, \"time\": 0, \"duration\": 60, \"source\": {{ JSON.stringify($json.audio_url) }}, \"volume\": 1.0 }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "node-07-render",
+      "name": "Creatomate — Render Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "id": "node-08-wait",
+      "name": "Wait 15s — Poll Render",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.creatomate.com/v1/renders/{{$json.id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 6bc5eb93ae794dcc84dde4722993ccb804e47832a4dab4a88d83072b1818991f1192f61c163d14d9fa73e1cc12ed7b4e"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-08b-poll",
+      "name": "Check Render Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.status}}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-09-if-render",
+      "name": "IF: Render Succeeded",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2660,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "1Jfwc8IXpBphdvzOksKLzzo_rchtbkr8m4Ux2VQcA9TE",
+        "sheetName": "Daily Log",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{$now.toFormat('yyyy-MM-dd')}}",
+            "Product Name (Arabic)": "={{$('Parse Script JSON').item.json.product.product_name_arabic}}",
+            "ASIN": "={{$('Parse Script JSON').item.json.product.asin}}",
+            "Price (EGP)": "={{$('Parse Script JSON').item.json.product.price_egp}}",
+            "Est. Commission (EGP)": "={{$('Parse Script JSON').item.json.product.estimated_commission_egp}}",
+            "Affiliate Link": "={{$('Parse Script JSON').item.json.product.affiliate_link}}",
+            "TikTok Posted": "manual upload pending",
+            "Instagram Posted": "manual upload pending",
+            "YouTube URL": "disabled",
+            "Render Status": "={{$json.status || 'rendered'}}",
+            "Stock Validated": "manual",
+            "Notes": ""
+          }
+        },
+        "options": {}
+      },
+      "id": "node-13-sheets",
+      "name": "Google Sheets — Append Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        2880,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "1ahmedrefaat@gmail.com",
+        "subject": "=🛒 PickEasy — {{$now.toFormat('yyyy-MM-dd')}} — {{ $items().length }} videos posted",
+        "emailType": "html",
+        "message": "=<html><body style='font-family:Segoe UI,Arial,sans-serif;max-width:680px;margin:0 auto;'><div style='background:#FF9900;color:#fff;padding:20px;border-radius:8px 8px 0 0;'><h2 style='margin:0;'>PickEasy.eg — Daily Report</h2><p style='margin:4px 0 0;'>{{$now.toFormat('yyyy-MM-dd')}}</p></div><div style='border:1px solid #eee;border-top:none;padding:20px;border-radius:0 0 8px 8px;'><h3>Today's 3 Videos — Ready to Post</h3>{{ $items().map(i => `<div style='border:1px solid #ddd;border-radius:8px;padding:16px;margin:12px 0;background:#fafafa;'><h4 style='margin:0 0 8px;color:#FF9900;'>${i.json.product.product_name_arabic} — ${i.json.product.price_egp} EGP</h4><p style='margin:4px 0;'><strong>Trend reason:</strong> ${i.json.product.trend_reason || 'N/A'}</p><p style='margin:8px 0;'><a href='${i.json.video_url}' style='background:#FF9900;color:#fff;padding:8px 16px;border-radius:4px;text-decoration:none;font-weight:600;'>📥 Download video</a> &nbsp; <a href='${i.json.product.affiliate_link}'>🔗 Affiliate link</a></p><div style='background:#fff;border:1px dashed #ccc;padding:12px;margin-top:8px;border-radius:4px;'><strong>Caption to copy:</strong><br><textarea readonly style='width:100%;border:none;background:transparent;font-family:inherit;font-size:13px;'>${(i.json.script || {}).caption_arabic || ''}</textarea></div><p style='font-size:12px;color:#888;margin:8px 0 0;'>TikTok: ${i.json.tiktok_status || 'manual upload'} · Instagram: ${i.json.instagram_status || 'manual upload'} · Est. commission: ${i.json.product.estimated_commission_egp} EGP</p></div>`).join('') }}<p><strong>Total est. daily commission:</strong> {{ $items().reduce((s,i)=>s+i.json.product.estimated_commission_egp,0) }} EGP</p><p><a href='https://docs.google.com/spreadsheets/d/1Jfwc8IXpBphdvzOksKLzzo_rchtbkr8m4Ux2VQcA9TE/edit'>📊 Open Google Sheet</a></p><p style='background:#fff7e6;padding:12px;border-left:4px solid #FF9900;font-size:13px;'>✅ Stock validation: Bestseller-safety mode active. Upgrade to PA-API after first 3 qualifying sales — see pa-api-upgrade-guide.md</p><p style='color:#666;font-size:13px;'>Your 10-minute Sunday review: open Google Sheet, flag winners, remove losers.</p></div></body></html>",
+        "options": {}
+      },
+      "id": "node-15-gmail",
+      "name": "Gmail — Daily Summary",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3100,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "1ahmedrefaat@gmail.com",
+        "subject": "=⚠️ PickEasy — No products found {{$now.toFormat('yyyy-MM-dd')}}",
+        "message": "Today's research returned 0 validated products. Check API keys, Claude prompt, or amazon.eg category availability."
+      },
+      "id": "node-14-alert",
+      "name": "Gmail — No Products Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 7am Cairo": {
+      "main": [
+        [
+          {
+            "node": "Fetch Amazon.eg Movers & Shakers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Amazon.eg Movers & Shakers": {
+      "main": [
+        [
+          {
+            "node": "Parse Trending ASINs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Trending ASINs": {
+      "main": [
+        [
+          {
+            "node": "Claude — Trend & Product Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude — Trend & Product Research": {
+      "main": [
+        [
+          {
+            "node": "Parse Products JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Products JSON": {
+      "main": [
+        [
+          {
+            "node": "IF: Products Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Products Found": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail — No Products Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Claude — Generate Script",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gmail — Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude — Generate Script": {
+      "main": [
+        [
+          {
+            "node": "Parse Script JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Script JSON": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs — Arabic VO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs — Arabic VO": {
+      "main": [
+        [
+          {
+            "node": "Creatomate — Render Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creatomate — Render Video": {
+      "main": [
+        [
+          {
+            "node": "Wait 15s — Poll Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s — Poll Render": {
+      "main": [
+        [
+          {
+            "node": "Check Render Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Render Status": {
+      "main": [
+        [
+          {
+            "node": "IF: Render Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Render Succeeded": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets — Append Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets — Append Row": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Cairo",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "pickeasy-eg-v2"
+  },
+  "pinData": {},
+  "versionId": "2.0.0",
+  "tags": [
+    {
+      "name": "amazon-affiliate"
+    },
+    {
+      "name": "pickeasy"
+    }
+  ]
+}
